@@ -63,11 +63,13 @@
 <body>
 
 <div class="container">
+    <!-- Fleet Tabs -->
     <div class="fleet-tabs">
         <button class="tab-btn active" id="tabSMR" onclick="switchFleet('SMR')"><i class="fa-solid fa-clock"></i> SMR Fleet Calendar</button>
         <button class="tab-btn" id="tabKM" onclick="switchFleet('KM')"><i class="fa-solid fa-gauge-high"></i> KM Fleet Calendar</button>
     </div>
 
+    <!-- Header Controls -->
     <div class="header-controls">
         <div class="title-section">
             <i class="fa-regular fa-calendar-days fa-lg" style="color: #475569;"></i>
@@ -75,16 +77,24 @@
         </div>
 
         <div class="action-bar">
+            <!-- Equipment Category Filter Dropdown -->
             <select id="categoryFilter" onchange="applyFilters()">
                 <option value="ALL">All Equipment Groups</option>
             </select>
+
+            <!-- Reset Filter Button -->
             <button class="btn-reset" onclick="resetFilters()"><i class="fa-solid fa-rotate-right"></i> Reset Filter</button>
+
+            <!-- Export Option -->
             <button class="btn-export" onclick="exportData()"><i class="fa-regular fa-file-excel"></i> Export Selected Weeks</button>
+
+            <!-- Week Navigation -->
             <button class="btn-nav" onclick="changeWeeks(-8)"><i class="fa-solid fa-chevron-left"></i> Prev 8 Weeks</button>
             <button class="btn-nav" onclick="changeWeeks(8)">Next 8 Weeks <i class="fa-solid fa-chevron-right"></i></button>
         </div>
     </div>
 
+    <!-- Matrix Table -->
     <div class="table-responsive">
         <table>
             <thead>
@@ -98,6 +108,7 @@
         </table>
     </div>
 
+    <!-- Pagination Footer -->
     <div class="table-footer">
         <div class="pagination-info" id="paginationInfo">Showing 0 to 0 of 0 entries</div>
         <div class="pagination-controls">
@@ -108,19 +119,22 @@
 </div>
 
 <script>
+    // Live Published CSV URLs (gid=0 for SMR, gid=1355419924 for KM)
     const SMR_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT2Vgc3cCUp4WefBKGtDYR2X34iN8iE09m43KRgv7GV_ehBQ9cCNaOak8IFljRQxg/pub?gid=548211899&single=true&output=csv";
     const KM_SHEET_URL  = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT2Vgc3cCUp4WefBKGtDYR2X34iN8iE09m43KRgv7GV_ehBQ9cCNaOak8IFljRQxg/pub?gid=1355419924&single=true&output=csv";
 
+    // State Management
     let currentFleet = 'SMR';
-    let currentWeekOffset = 0;
+    let currentWeekOffset = 0; // Offset relative to Base Week 40
     let currentPage = 1;
     const itemsPerPage = 30;
 
     let parsedSMRData = [];
     let parsedKMData = [];
 
+    // Week 40 alignment: Starts Oct 3, 2026 (Oct 3 - Oct 9)
     const baseWeekNumber = 40; 
-    const baseStartDate = new Date(2026, 9, 3); // Oct 3, 2026
+    const baseStartDate = new Date(2026, 9, 3); // 9 = October (0-indexed)
 
     function getWeekHeaderData(weekOffset) {
         const headers = [];
@@ -154,23 +168,10 @@
         const result = [];
         let cur = '';
         let inQuotes = false;
-        for (let i = 0; i < line.length; i++) {
-            const char = line[i];
-            if (char === '"') { 
-                if (inQuotes && line[i + 1] === '"') {
-                    cur += '"';
-                    i++;
-                } else {
-                    inQuotes = !inQuotes; 
-                }
-            }
-            else if (char === ',' && !inQuotes) { 
-                result.push(cur.trim()); 
-                cur = ''; 
-            }
-            else { 
-                cur += char; 
-            }
+        for (let char of line) {
+            if (char === '"') { inQuotes = !inQuotes; }
+            else if (char === ',' && !inQuotes) { result.push(cur.trim()); cur = ''; }
+            else { cur += char; }
         }
         result.push(cur.trim());
         return result;
@@ -178,11 +179,6 @@
 
     function getCategoryByPrefix(unitNo) {
         const clean = unitNo.toUpperCase().trim();
-        if (clean.startsWith("BD")) return "BULLDOZER";
-        if (clean.startsWith("BH")) return "BACKHOE";
-        if (clean.startsWith("WL")) return "WHEEL LOADER";
-        if (clean.startsWith("MG")) return "MOTOR GRADER";
-        if (clean.startsWith("WE")) return "WHEEL EXCAVATOR";
         if (clean.startsWith("GS")) return "GENERATOR SET";
         if (clean.startsWith("HB")) return "HYDRAULIC BREAKER";
         if (clean.startsWith("SPD")) return "SHEET PILE DRIVER";
@@ -203,84 +199,100 @@
         return null;
     }
 
+    // Strips leading day name (e.g. "Thursday, November 05, 2026" -> "November 05, 2026")
+    function parseProjectedDate(rawStr) {
+        if (!rawStr || rawStr.includes("Please") || rawStr.includes("N/A") || rawStr.includes("nan")) return null;
+        
+        let cleaned = rawStr.replace(/^[A-Za-z]+,\s*/, '').trim(); // Remove "Thursday, "
+        const d = new Date(cleaned);
+        return isNaN(d.getTime()) ? null : d;
+    }
+
     async function fetchSheetData(url, fleetType) {
         try {
             const response = await fetch(url);
             const csvText = await response.text();
-            const lines = csvText.split(/\r?\n/);
+            const lines = csvText.split('\n');
             
             let currentCategory = "GENERAL EQUIPMENT";
             const dataset = [];
 
             lines.forEach((line, index) => {
-                if (index < 4 || !line.trim()) return;
+                if (index < 4) return;
                 const cols = parseCSVLine(line);
 
-                let unitNo = "", brand = "", model = "", category = "";
-
                 if (fleetType === 'SMR') {
-                    unitNo = cols[0] ? cols[0].replace(/["']/g, "").trim() : "";
-                    brand  = cols[1] ? cols[1].replace(/["']/g, "").trim() : "";
-                    model  = cols[2] ? cols[2].replace(/["']/g, "").trim() : "";
+                    // SMR Layout: Unit = Col 0, Brand = Col 1, Model = Col 2, Projected Date = Col 17
+                    const unitNo = cols[0] ? cols[0].replace(/["']/g, "").trim() : "";
+                    const brand  = cols[1] ? cols[1].replace(/["']/g, "").trim() : "";
+                    const model  = cols[2] ? cols[2].replace(/["']/g, "").trim() : "";
+
+                    if (!unitNo || unitNo.includes("SERVICE PROJECTION") || unitNo === "Unit No") return;
+
+                    const isCategoryHeader = !/\d/.test(unitNo);
+                    if (isCategoryHeader) {
+                        currentCategory = unitNo;
+                        return;
+                    }
+
+                    const prefixCategory = getCategoryByPrefix(unitNo);
+                    const itemCat = prefixCategory || currentCategory;
+
+                    const projectedDateStr = cols[17];
+                    const pmsType = cols[12] || "PM Service";
+
+                    dataset.push({
+                        unitNo: unitNo,
+                        brand: (brand && brand !== '0' && brand !== 'nan') ? brand : '',
+                        model: (model && model !== '0' && model !== 'nan') ? model : '',
+                        category: itemCat,
+                        projectedDate: parseProjectedDate(projectedDateStr),
+                        pmsType: pmsType,
+                        fleet: fleetType
+                    });
+
                 } else {
-                    unitNo = cols[0] ? cols[0].replace(/["']/g, "").trim() : "";
-                    category = cols[1] ? cols[1].replace(/["']/g, "").trim() : "";
-                    brand    = cols[2] ? cols[2].replace(/["']/g, "").trim() : "";
-                    model    = cols[3] ? cols[3].replace(/["']/g, "").trim() : "";
-                }
+                    // KM Layout: Unit = Col 0, Category = Col 1, Brand = Col 2, Model = Col 3, Projected Date = Col 19
+                    const unitNo   = cols[0] ? cols[0].replace(/["']/g, "").trim() : "";
+                    const category = cols[1] ? cols[1].replace(/["']/g, "").trim() : "";
+                    const brand    = cols[2] ? cols[2].replace(/["']/g, "").trim() : "";
+                    const model    = cols[3] ? cols[3].replace(/["']/g, "").trim() : "";
 
-                if (!unitNo || unitNo.includes("SERVICE PROJECTION") || unitNo.includes("Unit No") || unitNo === "0") return;
+                    if (!unitNo || unitNo.includes("SERVICE PROJECTION") || unitNo === "Unit No") return;
 
-                const isCategoryHeader = !/\d/.test(unitNo) && unitNo.length > 2;
-                if (isCategoryHeader) {
-                    currentCategory = unitNo;
-                    return;
-                }
-
-                const prefixCategory = getCategoryByPrefix(unitNo);
-                let itemCat = prefixCategory || currentCategory;
-                if (fleetType === 'KM' && category && category !== '0' && category !== 'nan' && !prefixCategory) {
-                    itemCat = category;
-                }
-
-                // Bulletproof dynamic extraction to counter unquoted commas shifting columns
-                let projectedDate = null;
-                let pmsType = "PM Service";
-                
-                // Scan the columns from right to left to locate Date and Badge patterns
-                for (let i = cols.length - 1; i >= 3; i--) {
-                    const cell = cols[i].replace(/["']/g, "").trim();
-                    if (!cell) continue;
-                    
-                    // Match Date Pattern (e.g. November 5, 2026 or Thursday, November 5, 2026)
-                    if (!projectedDate && cell.length >= 10 && !cell.includes("Please") && !cell.includes("N/A") && !cell.includes("nan")) {
-                        if (/(?:[A-Za-z]+,\s*)?[A-Za-z]+\s+\d{1,2},\s+\d{4}/.test(cell)) {
-                            let cleaned = cell.replace(/^[A-Za-z]+,\s*/, '').trim();
-                            let d = new Date(cleaned);
-                            if (!isNaN(d.getTime())) {
-                                projectedDate = d;
-                            }
-                        }
+                    const isCategoryHeader = !/\d/.test(unitNo);
+                    if (isCategoryHeader) {
+                        currentCategory = unitNo;
+                        return;
                     }
+
+                    const prefixCategory = getCategoryByPrefix(unitNo);
+                    const itemCat = prefixCategory || ((category && category !== '0' && category !== 'nan') ? category : currentCategory);
+
+                    const projectedDateStr = cols[19];
+                    const pmsType = cols[14] || "PM Service";
+
+                    // Skip entries with invalid date indicators
+                    if (projectedDateStr && (projectedDateStr.toLowerCase().includes("please review") || 
+                        projectedDateStr.toLowerCase().includes("please provide"))) {
+                        return; // Skip this entry
+                    }
+
+                    const parsedDate = parseProjectedDate(projectedDateStr);
                     
-                    // Match PMS Badge Pattern (e.g. PM 1000, PM 15K, Rehab)
-                    const upperCell = cell.toUpperCase();
-                    if (pmsType === "PM Service") {
-                        if (/^PM[S]?\s*[\d,K]+$/.test(upperCell) || upperCell === "REHAB") {
-                            pmsType = upperCell === "REHAB" ? "Rehab" : upperCell;
-                        }
+                    // Only add items with valid dates
+                    if (parsedDate) {
+                        dataset.push({
+                            unitNo: unitNo,
+                            brand: (brand && brand !== '0' && brand !== 'nan') ? brand : '',
+                            model: (model && model !== '0' && model !== 'nan') ? model : '',
+                            category: itemCat,
+                            projectedDate: parsedDate,
+                            pmsType: pmsType,
+                            fleet: fleetType
+                        });
                     }
                 }
-
-                dataset.push({
-                    unitNo: unitNo,
-                    brand: (brand && brand !== '0' && brand !== 'nan') ? brand : '',
-                    model: (model && model !== '0' && model !== 'nan') ? model : '',
-                    category: itemCat,
-                    projectedDate: projectedDate,
-                    pmsType: pmsType,
-                    fleet: fleetType
-                });
             });
             return dataset;
         } catch (err) {
@@ -368,7 +380,7 @@
                     }
 
                     if (hasPMS) {
-                        const badgeText = item.pmsType;
+                        const badgeText = (item.pmsType && item.pmsType !== 'nan') ? item.pmsType : 'PM Service';
                         rowHtml += `<td><span class="pm-badge">${badgeText}</span></td>`;
                     } else {
                         rowHtml += `<td style="color: #cbd5e1;">-</td>`;
@@ -419,40 +431,7 @@
     }
 
     function exportData() {
-        const filtered = getFilteredData();
-        const weekData = getWeekHeaderData(currentWeekOffset);
-        
-        let csvContent = "data:text/csv;charset=utf-8,";
-        
-        const headerRow = ["Category", "Equipment ID", "Brand & Model", ...weekData.map(w => `"${w.code} (${w.dateRange})"` )];
-        csvContent += headerRow.join(",") + "\r\n";
-
-        filtered.forEach(item => {
-            const brandModelStr = [item.brand, item.model].filter(Boolean).join(' ');
-            const rowData = [
-                `"${item.category}"`,
-                `"${item.unitNo}"`,
-                `"${brandModelStr}"`
-            ];
-
-            weekData.forEach(w => {
-                let status = "-";
-                if (item.projectedDate && item.projectedDate >= w.startDate && item.projectedDate <= w.endDate) {
-                    status = item.pmsType;
-                }
-                rowData.push(`"${status}"`);
-            });
-
-            csvContent += rowData.join(",") + "\r\n";
-        });
-
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `PMS_Schedule_Matrix_${currentFleet}_Weeks.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        alert("Exporting current weekly view matrix...");
     }
 
     async function init() {
