@@ -119,6 +119,7 @@
 </div>
 
 <script>
+    // Live Published CSV URLs (gid=0 for SMR, gid=1355419924 for KM)
     const SMR_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT2Vgc3cCUp4WefBKGtDYR2X34iN8iE09m43KRgv7GV_ehBQ9cCNaOak8IFljRQxg/pub?gid=548211899&single=true&output=csv";
     const KM_SHEET_URL  = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT2Vgc3cCUp4WefBKGtDYR2X34iN8iE09m43KRgv7GV_ehBQ9cCNaOak8IFljRQxg/pub?gid=1355419924&single=true&output=csv";
 
@@ -131,9 +132,9 @@
     let parsedSMRData = [];
     let parsedKMData = [];
 
-    // Alignment: Week 40 starts on Saturday, Oct 3, 2026 (Oct 3 - Oct 9)
+    // Week 40 alignment: Starts Oct 3, 2026 (Oct 3 - Oct 9)
     const baseWeekNumber = 40; 
-    const baseStartDate = new Date(2026, 9, 3); // Months are 0-indexed: 9 = October
+    const baseStartDate = new Date(2026, 9, 3); // 9 = October (0-indexed)
 
     function getWeekHeaderData(weekOffset) {
         const headers = [];
@@ -146,11 +147,18 @@
             end.setDate(end.getDate() + 6);
 
             const formatStr = (d) => `${d.toLocaleString('default', { month: 'short' })} ${d.getDate()}`;
+            
+            const startZero = new Date(start);
+            startZero.setHours(0, 0, 0, 0);
+
+            const endMax = new Date(end);
+            endMax.setHours(23, 59, 59, 999);
+
             headers.push({
                 code: `W${weekNum}`,
                 dateRange: `${formatStr(start)} - ${formatStr(end)}`,
-                startDate: new Date(start.setHours(0, 0, 0, 0)),
-                endDate: new Date(end.setHours(23, 59, 59, 999))
+                startDate: startZero,
+                endDate: endMax
             });
         }
         return headers;
@@ -191,10 +199,12 @@
         return null;
     }
 
-    // Parses string formatted like "Thursday, November 05, 2026" or "Friday, October 16, 2026"
+    // Strips leading day name (e.g. "Thursday, November 05, 2026" -> "November 05, 2026")
     function parseProjectedDate(rawStr) {
         if (!rawStr || rawStr.includes("Please") || rawStr.includes("N/A") || rawStr.includes("nan")) return null;
-        const d = new Date(rawStr);
+        
+        let cleaned = rawStr.replace(/^[A-Za-z]+,\s*/, '').trim(); // Remove "Thursday, "
+        const d = new Date(cleaned);
         return isNaN(d.getTime()) ? null : d;
     }
 
@@ -212,7 +222,7 @@
                 const cols = parseCSVLine(line);
 
                 if (fleetType === 'SMR') {
-                    // SMR Layout: Unit No = Col 0, Brand = Col 1, Model = Col 2, Projected Date = Col 17
+                    // SMR Layout: Unit = Col 0, Brand = Col 1, Model = Col 2, Projected Date = Col 17
                     const unitNo = cols[0] ? cols[0].replace(/["']/g, "").trim() : "";
                     const brand  = cols[1] ? cols[1].replace(/["']/g, "").trim() : "";
                     const model  = cols[2] ? cols[2].replace(/["']/g, "").trim() : "";
@@ -242,7 +252,7 @@
                     });
 
                 } else {
-                    // KM Layout: Unit No = Col 0, Category = Col 1, Brand = Col 2, Model = Col 3, Projected Date = Col 19
+                    // KM Layout: Unit = Col 0, Category = Col 1, Brand = Col 2, Model = Col 3, Projected Date = Col 19
                     const unitNo   = cols[0] ? cols[0].replace(/["']/g, "").trim() : "";
                     const category = cols[1] ? cols[1].replace(/["']/g, "").trim() : "";
                     const brand    = cols[2] ? cols[2].replace(/["']/g, "").trim() : "";
