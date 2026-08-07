@@ -119,21 +119,21 @@
 </div>
 
 <script>
-    // Update SMR_SHEET_URL with your specific gid if needed
     const SMR_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT2Vgc3cCUp4WefBKGtDYR2X34iN8iE09m43KRgv7GV_ehBQ9cCNaOak8IFljRQxg/pub?gid=548211899&single=true&output=csv";
     const KM_SHEET_URL  = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT2Vgc3cCUp4WefBKGtDYR2X34iN8iE09m43KRgv7GV_ehBQ9cCNaOak8IFljRQxg/pub?gid=1355419924&single=true&output=csv";
 
     // State Management
     let currentFleet = 'SMR';
-    let currentWeekOffset = 0;
+    let currentWeekOffset = 0; // Offset relative to Base Week 40
     let currentPage = 1;
     const itemsPerPage = 30;
 
     let parsedSMRData = [];
     let parsedKMData = [];
 
-    const baseWeekNumber = 32; 
-    const baseStartDate = new Date(2026, 7, 8); // Aug 8, 2026 = W32
+    // Alignment: Week 40 starts on Saturday, Oct 3, 2026 (Oct 3 - Oct 9)
+    const baseWeekNumber = 40; 
+    const baseStartDate = new Date(2026, 9, 3); // Months are 0-indexed: 9 = October
 
     function getWeekHeaderData(weekOffset) {
         const headers = [];
@@ -149,8 +149,8 @@
             headers.push({
                 code: `W${weekNum}`,
                 dateRange: `${formatStr(start)} - ${formatStr(end)}`,
-                startDate: start,
-                endDate: end
+                startDate: new Date(start.setHours(0, 0, 0, 0)),
+                endDate: new Date(end.setHours(23, 59, 59, 999))
             });
         }
         return headers;
@@ -169,17 +169,12 @@
         return result;
     }
 
-    // Helper to map equipment prefixes to categories for both SMR & KM Fleets
     function getCategoryByPrefix(unitNo) {
         const clean = unitNo.toUpperCase().trim();
-        
-        // SMR Fleet Prefixes
         if (clean.startsWith("GS")) return "GENERATOR SET";
         if (clean.startsWith("HB")) return "HYDRAULIC BREAKER";
         if (clean.startsWith("SPD")) return "SHEET PILE DRIVER";
         if (clean.startsWith("WBR")) return "WALK BEHIND ROLLER";
-
-        // KM Fleet Prefixes
         if (clean.startsWith("CT")) return "CARGO TRUCK";
         if (clean.startsWith("DT")) return "DUMP TRUCK";
         if (clean.startsWith("FDT")) return "FUEL DELIVERY TRUCK";
@@ -193,8 +188,14 @@
         if (clean.startsWith("PM")) return "PRIME MOVER";
         if (clean.startsWith("RES")) return "RESCUER";
         if (clean.startsWith("SV")) return "SERVICE VEHICLE";
-
         return null;
+    }
+
+    // Parses string formatted like "Thursday, November 05, 2026" or "Friday, October 16, 2026"
+    function parseProjectedDate(rawStr) {
+        if (!rawStr || rawStr.includes("Please") || rawStr.includes("N/A") || rawStr.includes("nan")) return null;
+        const d = new Date(rawStr);
+        return isNaN(d.getTime()) ? null : d;
     }
 
     async function fetchSheetData(url, fleetType) {
@@ -211,7 +212,7 @@
                 const cols = parseCSVLine(line);
 
                 if (fleetType === 'SMR') {
-                    // SMR Layout
+                    // SMR Layout: Unit No = Col 0, Brand = Col 1, Model = Col 2, Projected Date = Col 17
                     const unitNo = cols[0] ? cols[0].replace(/["']/g, "").trim() : "";
                     const brand  = cols[1] ? cols[1].replace(/["']/g, "").trim() : "";
                     const model  = cols[2] ? cols[2].replace(/["']/g, "").trim() : "";
@@ -219,7 +220,6 @@
                     if (!unitNo || unitNo.includes("SERVICE PROJECTION") || unitNo === "Unit No") return;
 
                     const isCategoryHeader = !/\d/.test(unitNo);
-
                     if (isCategoryHeader) {
                         currentCategory = unitNo;
                         return;
@@ -230,25 +230,19 @@
 
                     const projectedDateStr = cols[17];
                     const pmsType = cols[12] || "PM Service";
-                    
-                    let parsedDate = null;
-                    if (projectedDateStr && !projectedDateStr.includes("Please")) {
-                        const d = new Date(projectedDateStr);
-                        if (!isNaN(d.getTime())) parsedDate = d;
-                    }
 
                     dataset.push({
                         unitNo: unitNo,
                         brand: (brand && brand !== '0' && brand !== 'nan') ? brand : '',
                         model: (model && model !== '0' && model !== 'nan') ? model : '',
                         category: itemCat,
-                        projectedDate: parsedDate,
+                        projectedDate: parseProjectedDate(projectedDateStr),
                         pmsType: pmsType,
                         fleet: fleetType
                     });
 
                 } else {
-                    // KM Layout
+                    // KM Layout: Unit No = Col 0, Category = Col 1, Brand = Col 2, Model = Col 3, Projected Date = Col 19
                     const unitNo   = cols[0] ? cols[0].replace(/["']/g, "").trim() : "";
                     const category = cols[1] ? cols[1].replace(/["']/g, "").trim() : "";
                     const brand    = cols[2] ? cols[2].replace(/["']/g, "").trim() : "";
@@ -257,7 +251,6 @@
                     if (!unitNo || unitNo.includes("SERVICE PROJECTION") || unitNo === "Unit No") return;
 
                     const isCategoryHeader = !/\d/.test(unitNo);
-
                     if (isCategoryHeader) {
                         currentCategory = unitNo;
                         return;
@@ -268,19 +261,13 @@
 
                     const projectedDateStr = cols[19];
                     const pmsType = cols[14] || "PM Service";
-                    
-                    let parsedDate = null;
-                    if (projectedDateStr && !projectedDateStr.includes("Please")) {
-                        const d = new Date(projectedDateStr);
-                        if (!isNaN(d.getTime())) parsedDate = d;
-                    }
 
                     dataset.push({
                         unitNo: unitNo,
                         brand: (brand && brand !== '0' && brand !== 'nan') ? brand : '',
                         model: (model && model !== '0' && model !== 'nan') ? model : '',
                         category: itemCat,
-                        projectedDate: parsedDate,
+                        projectedDate: parseProjectedDate(projectedDateStr),
                         pmsType: pmsType,
                         fleet: fleetType
                     });
@@ -353,7 +340,6 @@
                     lastCategory = item.category;
                 }
 
-                // Construct clean brand/model subtitle string (hides N/A N/A)
                 const brandModelStr = [item.brand, item.model].filter(Boolean).join(' ');
                 const subDetailsHtml = brandModelStr ? `<span class="sub-details">${brandModelStr}</span>` : '';
 
@@ -373,7 +359,8 @@
                     }
 
                     if (hasPMS) {
-                        rowHtml += `<td><span class="pm-badge">${item.pmsType !== 'nan' ? item.pmsType : 'PM Service'}</span></td>`;
+                        const badgeText = (item.pmsType && item.pmsType !== 'nan') ? item.pmsType : 'PM Service';
+                        rowHtml += `<td><span class="pm-badge">${badgeText}</span></td>`;
                     } else {
                         rowHtml += `<td style="color: #cbd5e1;">-</td>`;
                     }
