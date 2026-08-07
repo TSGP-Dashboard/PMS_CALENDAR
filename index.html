@@ -119,7 +119,7 @@
 </div>
 
 <script>
-    // Live Published CSV URLs (gid=0 for SMR, gid=1355419924 for KM)
+    // Live Published CSV URLs (gid=548211899 for SMR, gid=1355419924 for KM)
     const SMR_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT2Vgc3cCUp4WefBKGtDYR2X34iN8iE09m43KRgv7GV_ehBQ9cCNaOak8IFljRQxg/pub?gid=548211899&single=true&output=csv";
     const KM_SHEET_URL  = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT2Vgc3cCUp4WefBKGtDYR2X34iN8iE09m43KRgv7GV_ehBQ9cCNaOak8IFljRQxg/pub?gid=1355419924&single=true&output=csv";
 
@@ -132,7 +132,7 @@
     let parsedSMRData = [];
     let parsedKMData = [];
 
-    // Week 40 alignment: Starts Oct 3, 2026 (Oct 3 - Oct 9)
+    // Base Week setup (Week 40 starts Oct 3, 2026)
     const baseWeekNumber = 40; 
     const baseStartDate = new Date(2026, 9, 3); // 9 = October (0-indexed)
 
@@ -168,10 +168,23 @@
         const result = [];
         let cur = '';
         let inQuotes = false;
-        for (let char of line) {
-            if (char === '"') { inQuotes = !inQuotes; }
-            else if (char === ',' && !inQuotes) { result.push(cur.trim()); cur = ''; }
-            else { cur += char; }
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') { 
+                if (inQuotes && line[i + 1] === '"') {
+                    cur += '"';
+                    i++;
+                } else {
+                    inQuotes = !inQuotes; 
+                }
+            }
+            else if (char === ',' && !inQuotes) { 
+                result.push(cur.trim()); 
+                cur = ''; 
+            }
+            else { 
+                cur += char; 
+            }
         }
         result.push(cur.trim());
         return result;
@@ -199,11 +212,10 @@
         return null;
     }
 
-    // Strips leading day name (e.g. "Thursday, November 05, 2026" -> "November 05, 2026")
     function parseProjectedDate(rawStr) {
         if (!rawStr || rawStr.includes("Please") || rawStr.includes("N/A") || rawStr.includes("nan")) return null;
         
-        let cleaned = rawStr.replace(/^[A-Za-z]+,\s*/, '').trim(); // Remove "Thursday, "
+        let cleaned = rawStr.replace(/^[A-Za-z]+,\s*/, '').trim();
         const d = new Date(cleaned);
         return isNaN(d.getTime()) ? null : d;
     }
@@ -212,17 +224,16 @@
         try {
             const response = await fetch(url);
             const csvText = await response.text();
-            const lines = csvText.split('\n');
+            const lines = csvText.split(/\r?\n/);
             
             let currentCategory = "GENERAL EQUIPMENT";
             const dataset = [];
 
             lines.forEach((line, index) => {
-                if (index < 4) return;
+                if (index < 4 || !line.trim()) return;
                 const cols = parseCSVLine(line);
 
                 if (fleetType === 'SMR') {
-                    // SMR Layout: Unit = Col 0, Brand = Col 1, Model = Col 2, Projected Date = Col 17
                     const unitNo = cols[0] ? cols[0].replace(/["']/g, "").trim() : "";
                     const brand  = cols[1] ? cols[1].replace(/["']/g, "").trim() : "";
                     const model  = cols[2] ? cols[2].replace(/["']/g, "").trim() : "";
@@ -252,7 +263,6 @@
                     });
 
                 } else {
-                    // KM Layout: Unit = Col 0, Category = Col 1, Brand = Col 2, Model = Col 3, Projected Date = Col 19
                     const unitNo   = cols[0] ? cols[0].replace(/["']/g, "").trim() : "";
                     const category = cols[1] ? cols[1].replace(/["']/g, "").trim() : "";
                     const brand    = cols[2] ? cols[2].replace(/["']/g, "").trim() : "";
@@ -420,7 +430,43 @@
     }
 
     function exportData() {
-        alert("Exporting current weekly view matrix...");
+        const filtered = getFilteredData();
+        const weekData = getWeekHeaderData(currentWeekOffset);
+        
+        let csvContent = "data:text/csv;charset=utf-8,";
+        
+        // CSV Header
+        const headerRow = ["Category", "Equipment ID", "Brand & Model", ...weekData.map(w => `"${w.code} (${w.dateRange})"` )];
+        csvContent += headerRow.join(",") + "\r\n";
+
+        // CSV Rows
+        filtered.forEach(item => {
+            const brandModelStr = [item.brand, item.model].filter(Boolean).join(' ');
+            const rowData = [
+                `"${item.category}"`,
+                `"${item.unitNo}"`,
+                `"${brandModelStr}"`
+            ];
+
+            weekData.forEach(w => {
+                let status = "-";
+                if (item.projectedDate && item.projectedDate >= w.startDate && item.projectedDate <= w.endDate) {
+                    status = (item.pmsType && item.pmsType !== 'nan') ? item.pmsType : 'PM Service';
+                }
+                rowData.push(`"${status}"`);
+            });
+
+            csvContent += rowData.join(",") + "\r\n";
+        });
+
+        // Trigger Download
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `PMS_Schedule_Matrix_${currentFleet}_Weeks.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 
     async function init() {
