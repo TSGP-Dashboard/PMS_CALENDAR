@@ -222,7 +222,7 @@
                 const cols = parseCSVLine(line);
 
                 if (fleetType === 'SMR') {
-                    // SMR Layout: Unit = Col 0, Brand = Col 1, Model = Col 2, Projected Date = Col 17
+                    // SMR Layout: Unit = Col 0, Brand = Col 1, Model = Col 2, Projected Date = Col 25, PMS Type = Col 20
                     const unitNo = cols[0] ? cols[0].replace(/["']/g, "").trim() : "";
                     const brand  = cols[1] ? cols[1].replace(/["']/g, "").trim() : "";
                     const model  = cols[2] ? cols[2].replace(/["']/g, "").trim() : "";
@@ -238,21 +238,32 @@
                     const prefixCategory = getCategoryByPrefix(unitNo);
                     const itemCat = prefixCategory || currentCategory;
 
-                    const projectedDateStr = cols[17];
-                    const pmsType = cols[12] || "PM Service";
+                    const projectedDateStr = cols[25];
+                    const pmsType = cols[20] || "PM Service";
 
-                    dataset.push({
-                        unitNo: unitNo,
-                        brand: (brand && brand !== '0' && brand !== 'nan') ? brand : '',
-                        model: (model && model !== '0' && model !== 'nan') ? model : '',
-                        category: itemCat,
-                        projectedDate: parseProjectedDate(projectedDateStr),
-                        pmsType: pmsType,
-                        fleet: fleetType
-                    });
+                    // Skip entries with invalid date indicators
+                    if (projectedDateStr && (projectedDateStr.toLowerCase().includes("please review") || 
+                        projectedDateStr.toLowerCase().includes("please provide"))) {
+                        return; // Skip this entry
+                    }
+
+                    const parsedDate = parseProjectedDate(projectedDateStr);
+                    
+                    // Only add items with valid dates
+                    if (parsedDate) {
+                        dataset.push({
+                            unitNo: unitNo,
+                            brand: (brand && brand !== '0' && brand !== 'nan') ? brand : '',
+                            model: (model && model !== '0' && model !== 'nan') ? model : '',
+                            category: itemCat,
+                            projectedDate: parsedDate,
+                            pmsType: pmsType,
+                            fleet: fleetType
+                        });
+                    }
 
                 } else {
-                    // KM Layout: Unit = Col 0, Category = Col 1, Brand = Col 2, Model = Col 3, Projected Date = Col 19
+                    // KM Layout: Unit = Col 0, Category = Col 1, Brand = Col 2, Model = Col 3, Projected Date = Col 23, PMS Type = Col 18
                     const unitNo   = cols[0] ? cols[0].replace(/["']/g, "").trim() : "";
                     const category = cols[1] ? cols[1].replace(/["']/g, "").trim() : "";
                     const brand    = cols[2] ? cols[2].replace(/["']/g, "").trim() : "";
@@ -269,8 +280,8 @@
                     const prefixCategory = getCategoryByPrefix(unitNo);
                     const itemCat = prefixCategory || ((category && category !== '0' && category !== 'nan') ? category : currentCategory);
 
-                    const projectedDateStr = cols[19];
-                    const pmsType = cols[14] || "PM Service";
+                    const projectedDateStr = cols[23];
+                    const pmsType = cols[18] || "PM Service";
 
                     // Skip entries with invalid date indicators
                     if (projectedDateStr && (projectedDateStr.toLowerCase().includes("please review") || 
