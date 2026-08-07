@@ -4,271 +4,72 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PMS Weekly Schedule Matrix</title>
-    <!-- FontAwesome for icons -->
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
             --primary-bg: #f4f6f9;
-            --header-dark: #343a40;
             --table-header-bg: #2b3e50;
-            --border-color: #e2e8f0;
-            --text-dark: #333333;
-            --text-muted: #6c757d;
+            --border-color: #cbd5e1;
+            --text-dark: #1e293b;
+            --text-muted: #64748b;
             --pm-green: #10b981;
             --pm-green-dark: #059669;
-            --btn-blue: #2563eb;
         }
 
-        * {
-            box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            background-color: var(--primary-bg);
-            padding: 20px;
-            color: var(--text-dark);
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            padding: 20px;
-        }
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; }
+        body { background-color: var(--primary-bg); padding: 20px; color: var(--text-dark); }
+        .container { max-width: 1450px; margin: 0 auto; background: #ffffff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); padding: 20px; }
 
         /* Fleet Navigation Tabs */
-        .fleet-tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            border-bottom: 2px solid var(--border-color);
-            padding-bottom: 10px;
-        }
+        .fleet-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+        .tab-btn { padding: 10px 24px; font-size: 15px; font-weight: 600; border: none; background: #e2e8f0; color: #475569; border-radius: 6px; cursor: pointer; transition: all 0.2s ease; }
+        .tab-btn.active { background: #1e293b; color: #ffffff; }
 
-        .tab-btn {
-            padding: 10px 24px;
-            font-size: 15px;
-            font-weight: 600;
-            border: none;
-            background: #e2e8f0;
-            color: #475569;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
+        /* Control Bar */
+        .header-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px; }
+        .title-section { display: flex; align-items: center; gap: 10px; }
+        .title-section h2 { font-size: 20px; font-weight: 700; color: #1e293b; }
+        .action-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
-        .tab-btn.active {
-            background: #1e293b;
-            color: #ffffff;
-        }
+        select, button { padding: 8px 14px; font-size: 13px; border-radius: 6px; border: 1px solid #cbd5e1; background: #ffffff; cursor: pointer; outline: none; }
+        .btn-export { background-color: var(--pm-green); color: #ffffff; border: none; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+        .btn-export:hover { background-color: var(--pm-green-dark); }
+        .btn-nav { background-color: #f8fafc; color: #334155; font-weight: 600; }
+        .btn-nav:hover { background-color: #e2e8f0; }
+        .btn-reset { background-color: #ef4444; color: white; border: none; font-weight: 600; }
 
-        .tab-btn:hover:not(.active) {
-            background: #cbd5e1;
-        }
+        /* Table Matrix Styling */
+        .table-responsive { overflow-x: auto; border: 1px solid var(--border-color); border-radius: 6px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; background: #ffffff; }
+        th, td { border: 1px solid var(--border-color); text-align: center; padding: 8px; height: 42px; }
+        th { background-color: var(--table-header-bg); color: #ffffff; font-weight: 600; }
+        th.eq-id-col { background-color: #cbd5e1; color: #334155; width: 220px; text-align: left; padding-left: 15px; }
+        
+        td.eq-id { text-align: left; padding-left: 15px; font-weight: 700; color: #1e293b; background-color: #f8fafc; }
+        .sub-details { font-weight: 400; font-size: 11px; color: #64748b; display: block; margin-top: 2px; }
+        .week-subtext { font-size: 11px; font-weight: 400; display: block; margin-top: 2px; color: #cbd5e1; }
 
-        /* Control Panel */
-        .header-controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 15px;
-        }
+        .pm-badge { background-color: var(--pm-green); color: #ffffff; padding: 4px 10px; border-radius: 12px; font-weight: 700; font-size: 11px; display: inline-block; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .category-row { background-color: #f1f5f9; font-weight: 700; color: #334155; text-align: left; padding-left: 15px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
 
-        .title-section {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .title-section h2 {
-            font-size: 20px;
-            font-weight: 700;
-            color: #1e293b;
-        }
-
-        .action-bar {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        select, button {
-            padding: 7px 12px;
-            font-size: 13px;
-            border-radius: 5px;
-            border: 1px solid #cbd5e1;
-            background: #ffffff;
-            cursor: pointer;
-            outline: none;
-        }
-
-        select {
-            color: #334155;
-            font-weight: 500;
-        }
-
-        .btn-export {
-            background-color: var(--pm-green);
-            color: #ffffff;
-            border: none;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .btn-export:hover {
-            background-color: var(--pm-green-dark);
-        }
-
-        .btn-nav {
-            background-color: #f8fafc;
-            color: #334155;
-            font-weight: 600;
-        }
-
-        .btn-nav:hover {
-            background-color: #e2e8f0;
-        }
-
-        .btn-reset {
-            background-color: #ef4444;
-            color: white;
-            border: none;
-            font-weight: 600;
-        }
-
-        .btn-reset:hover {
-            background-color: #dc2626;
-        }
-
-        /* Table Styling */
-        .table-responsive {
-            overflow-x: auto;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-            background: #ffffff;
-        }
-
-        th, td {
-            border: 1px solid #e2e8f0;
-            text-align: center;
-            padding: 8px;
-            height: 42px;
-        }
-
-        th {
-            background-color: var(--table-header-bg);
-            color: #ffffff;
-            font-weight: 600;
-        }
-
-        th.eq-id-col {
-            background-color: #cbd5e1;
-            color: #334155;
-            width: 180px;
-            text-align: left;
-            padding-left: 15px;
-        }
-
-        td.eq-id {
-            text-align: left;
-            padding-left: 15px;
-            font-weight: 700;
-            color: #1e293b;
-            background-color: #fafafa;
-        }
-
-        .week-subtext {
-            font-size: 11px;
-            font-weight: 400;
-            display: block;
-            margin-top: 2px;
-            color: #cbd5e1;
-        }
-
-        /* Scheduled Badge */
-        .pm-badge {
-            background-color: var(--pm-green);
-            color: #ffffff;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-weight: 700;
-            font-size: 11px;
-            display: inline-block;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-
-        .empty-cell {
-            color: #cbd5e1;
-        }
-
-        /* Category Header inside Table */
-        .category-row {
-            background-color: #f1f5f9;
-            font-weight: 700;
-            color: #475569;
-            text-align: left;
-            padding-left: 15px;
-            font-size: 12px;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-        }
-
-        /* Footer Pagination */
-        .table-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 15px;
-            padding-top: 10px;
-        }
-
-        .pagination-info {
-            font-size: 13px;
-            color: var(--text-muted);
-        }
-
-        .pagination-controls {
-            display: flex;
-            gap: 5px;
-        }
-
-        .pagination-controls button {
-            padding: 6px 14px;
-            font-weight: 600;
-        }
-
-        .pagination-controls button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
+        /* Pagination Footer */
+        .table-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; }
+        .pagination-info { font-size: 13px; color: var(--text-muted); }
+        .pagination-controls { display: flex; gap: 6px; }
+        .pagination-controls button:disabled { opacity: 0.5; cursor: not-allowed; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <!-- Fleet Tabs Switcher -->
+    <!-- Fleet Tabs -->
     <div class="fleet-tabs">
-        <button class="tab-btn active" onclick="switchFleet('SMR')"><i class="fa-solid font-awesome"></i> SMR Fleet Calendar</button>
-        <button class="tab-btn" onclick="switchFleet('KM')"><i class="fa-solid fa-truck-monster"></i> KM Fleet Calendar</button>
+        <button class="tab-btn active" id="tabSMR" onclick="switchFleet('SMR')"><i class="fa-solid fa-clock"></i> SMR Fleet Calendar</button>
+        <button class="tab-btn" id="tabKM" onclick="switchFleet('KM')"><i class="fa-solid fa-gauge-high"></i> KM Fleet Calendar</button>
     </div>
 
-    <!-- Controls Header -->
+    <!-- Header Controls -->
     <div class="header-controls">
         <div class="title-section">
             <i class="fa-regular fa-calendar-days fa-lg" style="color: #475569;"></i>
@@ -276,20 +77,16 @@
         </div>
 
         <div class="action-bar">
-            <!-- Equipment Category Filter -->
+            <!-- Equipment Category Filter Dropdown -->
             <select id="categoryFilter" onchange="applyFilters()">
                 <option value="ALL">All Equipment Groups</option>
-                <option value="Backhoe">Backhoe (BH)</option>
-                <option value="Bulldozers">Bulldozers (BD)</option>
-                <option value="Dump Trucks">Dump Trucks (DT)</option>
-                <option value="Wheel Loaders">Wheel Loaders (WL)</option>
             </select>
 
             <!-- Reset Filter Button -->
             <button class="btn-reset" onclick="resetFilters()"><i class="fa-solid fa-rotate-right"></i> Reset Filter</button>
 
             <!-- Export Option -->
-            <button class="btn-export"><i class="fa-regular fa-file-excel"></i> Export Selected Weeks</button>
+            <button class="btn-export" onclick="exportData()"><i class="fa-regular fa-file-excel"></i> Export Selected Weeks</button>
 
             <!-- Week Navigation -->
             <button class="btn-nav" onclick="changeWeeks(-8)"><i class="fa-solid fa-chevron-left"></i> Prev 8 Weeks</button>
@@ -297,26 +94,23 @@
         </div>
     </div>
 
-    <!-- Schedule Matrix Table -->
+    <!-- Matrix Table -->
     <div class="table-responsive">
         <table>
             <thead>
                 <tr id="tableHeaderRow">
                     <th class="eq-id-col">EQUIPMENT ID</th>
-                    <!-- Dynamic Week Headers -->
                 </tr>
             </thead>
             <tbody id="matrixBody">
-                <!-- Rows populated dynamically -->
+                <tr><td colspan="9" style="padding: 25px;"><i class="fa-solid fa-spinner fa-spin"></i> Loading live Google Sheets data...</td></tr>
             </tbody>
         </table>
     </div>
 
-    <!-- Table Footer / Pagination -->
+    <!-- Pagination Footer at Bottom Right -->
     <div class="table-footer">
-        <div class="pagination-info" id="paginationInfo">
-            Showing 1 to 30 of 0 entries
-        </div>
+        <div class="pagination-info" id="paginationInfo">Showing 0 to 0 of 0 entries</div>
         <div class="pagination-controls">
             <button id="prevBtn" class="btn-nav" onclick="changePage(-1)">Previous</button>
             <button id="nextBtn" class="btn-nav" onclick="changePage(1)">Next</button>
@@ -325,56 +119,22 @@
 </div>
 
 <script>
-    // State management
+    // Live Google Sheets CSV URLs
+    const SMR_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT2Vgc3cCUp4WefBKGtDYR2X34iN8iE09m43KRgv7GV_ehBQ9cCNaOak8IFljRQxg/pub?gid=1355419924&single=true&output=csv";
+    // Replace below URL with your KM Sheet Published GID CSV URL if separate
+    const KM_SHEET_URL  = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT2Vgc3cCUp4WefBKGtDYR2X34iN8iE09m43KRgv7GV_ehBQ9cCNaOak8IFljRQxg/pub?gid=1355419924&single=true&output=csv";
+
+    // Application State
     let currentFleet = 'SMR';
-    let currentWeekOffset = 0; // 0 = W32 - W39 base
+    let currentWeekOffset = 0;
     let currentPage = 1;
     const itemsPerPage = 30;
 
-    // Categories definition
-    const categories = ['Backhoe', 'Bulldozers', 'Dump Trucks', 'Wheel Loaders'];
-    const categoryPrefixes = { 'Backhoe': 'BH', 'Bulldozers': 'BD', 'Dump Trucks': 'DT', 'Wheel Loaders': 'WL' };
+    let parsedSMRData = [];
+    let parsedKMData = [];
 
-    // Generated Equipment Dataset
-    let equipmentData = [];
-
-    function generateData() {
-        equipmentData = [];
-        let idCounter = 100;
-
-        ['SMR', 'KM'].forEach(fleet => {
-            categories.forEach(cat => {
-                const prefix = categoryPrefixes[cat];
-                const count = fleet === 'SMR' ? 25 : 18; // Make enough items to demonstrate pagination (>30 total)
-
-                for (let i = 1; i <= count; i++) {
-                    const eqId = `${prefix}-${idCounter + i}`;
-                    
-                    // Generate random PMS schedule for 16 weeks
-                    const schedules = {};
-                    for (let w = 32; w <= 47; w++) {
-                        const rand = Math.random();
-                        if (rand < 0.15) schedules[`W${w}`] = 'PM 500';
-                        else if (rand < 0.20) schedules[`W${w}`] = 'PM 1000';
-                        else if (rand < 0.23) schedules[`W${w}`] = 'PM 1500';
-                        else schedules[`W${w}`] = null;
-                    }
-
-                    equipmentData.push({
-                        id: eqId,
-                        fleet: fleet,
-                        category: cat,
-                        schedules: schedules
-                    });
-                }
-                idCounter += 50;
-            });
-        });
-    }
-
-    // Initialize Base Dates
-    const baseWeekNumber = 32;
-    const baseStartDate = new Date(2026, 7, 8); // Aug 8
+    const baseWeekNumber = 32; 
+    const baseStartDate = new Date(2026, 7, 8); // Aug 8, 2026 = W32
 
     function getWeekHeaderData(weekOffset) {
         const headers = [];
@@ -389,10 +149,92 @@
             const formatStr = (d) => `${d.toLocaleString('default', { month: 'short' })} ${d.getDate()}`;
             headers.push({
                 code: `W${weekNum}`,
-                dateRange: `${formatStr(start)} - ${formatStr(end)}`
+                dateRange: `${formatStr(start)} - ${formatStr(end)}`,
+                startDate: start,
+                endDate: end
             });
         }
         return headers;
+    }
+
+    // Parse CSV line accurately with quotes handling
+    function parseCSVLine(line) {
+        const result = [];
+        let cur = '';
+        let inQuotes = false;
+        for (let char of line) {
+            if (char === '"') { inQuotes = !inQuotes; }
+            else if (char === ',' && !inQuotes) { result.push(cur.trim()); cur = ''; }
+            else { cur += char; }
+        }
+        result.push(cur.trim());
+        return result;
+    }
+
+    // Fetch and process live Google Sheets CSV
+    async function fetchSheetData(url, fleetType) {
+        try {
+            const response = await fetch(url);
+            const csvText = await response.text();
+            const lines = csvText.split('\n');
+            
+            let currentCategory = "GENERAL EQUIPMENT";
+            const dataset = [];
+
+            lines.forEach((line, index) => {
+                if (index < 4) return;
+                const cols = parseCSVLine(line);
+                const unitNo = cols[0] ? cols[0].replace(/["']/g, "").trim() : "";
+                const brand = cols[1] ? cols[1].replace(/["']/g, "").trim() : "";
+                const model = cols[2] ? cols[2].replace(/["']/g, "").trim() : "";
+                
+                // Detect Category Headers
+                if (unitNo && !brand && !model && !unitNo.includes("SERVICE PROJECTION")) {
+                    currentCategory = unitNo;
+                    return;
+                }
+
+                // Equipment Data Row
+                if (unitNo && brand && unitNo !== "Unit No") {
+                    const projectedDateStr = fleetType === 'SMR' ? cols[17] : cols[19];
+                    const pmsType = fleetType === 'SMR' ? (cols[12] || "PM Service") : (cols[14] || "PM Service");
+                    
+                    let parsedDate = null;
+                    if (projectedDateStr && !projectedDateStr.includes("Please")) {
+                        const d = new Date(projectedDateStr);
+                        if (!isNaN(d.getTime())) parsedDate = d;
+                    }
+
+                    dataset.push({
+                        unitNo: unitNo,
+                        brand: brand,
+                        model: model,
+                        category: currentCategory,
+                        projectedDate: parsedDate,
+                        pmsType: pmsType,
+                        fleet: fleetType
+                    });
+                }
+            });
+            return dataset;
+        } catch (err) {
+            console.error(`Error loading ${fleetType} Sheet:`, err);
+            return [];
+        }
+    }
+
+    function populateCategoryDropdown() {
+        const filter = document.getElementById('categoryFilter');
+        filter.innerHTML = '<option value="ALL">All Equipment Groups</option>';
+        const dataset = currentFleet === 'SMR' ? parsedSMRData : parsedKMData;
+        const categories = [...new Set(dataset.map(item => item.category))].sort();
+
+        categories.forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat;
+            opt.innerText = cat;
+            filter.appendChild(opt);
+        });
     }
 
     function renderHeaders() {
@@ -401,23 +243,15 @@
         
         let html = '<th class="eq-id-col">EQUIPMENT ID</th>';
         weekData.forEach(w => {
-            html += `
-                <th>
-                    ${w.code}
-                    <span class="week-subtext">${w.dateRange}</span>
-                </th>
-            `;
+            html += `<th>${w.code}<span class="week-subtext">${w.dateRange}</span></th>`;
         });
         headerRow.innerHTML = html;
     }
 
     function getFilteredData() {
+        const dataset = currentFleet === 'SMR' ? parsedSMRData : parsedKMData;
         const categoryVal = document.getElementById('categoryFilter').value;
-        return equipmentData.filter(item => {
-            const matchesFleet = item.fleet === currentFleet;
-            const matchesCategory = categoryVal === 'ALL' || item.category === categoryVal;
-            return matchesFleet && matchesCategory;
-        });
+        return dataset.filter(item => categoryVal === 'ALL' || item.category === categoryVal);
     }
 
     function renderTable() {
@@ -426,10 +260,8 @@
         const weekData = getWeekHeaderData(currentWeekOffset);
         const tbody = document.getElementById('matrixBody');
 
-        // Pagination calculation
         const totalItems = filtered.length;
         const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
-
         if (currentPage > totalPages) currentPage = totalPages;
 
         const startIndex = (currentPage - 1) * itemsPerPage;
@@ -439,12 +271,12 @@
         tbody.innerHTML = '';
 
         if (pageData.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" style="padding: 20px; color: #64748b;">No equipment records found.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" style="padding: 20px; color: #64748b;">No equipment records found for this view.</td></tr>`;
         } else {
             let lastCategory = '';
 
             pageData.forEach(item => {
-                // Category Group Header Insertion
+                // Category Banner Row
                 if (item.category !== lastCategory) {
                     const catRow = document.createElement('tr');
                     catRow.innerHTML = `<td colspan="9" class="category-row"><i class="fa-solid fa-layer-group"></i> ${item.category}</td>`;
@@ -453,14 +285,25 @@
                 }
 
                 const tr = document.createElement('tr');
-                let rowHtml = `<td class="eq-id">${item.id}</td>`;
+                let rowHtml = `
+                    <td class="eq-id">
+                        ${item.unitNo}
+                        <span class="sub-details">${item.brand} ${item.model}</span>
+                    </td>`;
 
+                // Map Projected Next Service Date to 8-Week Matrix Columns
                 weekData.forEach(w => {
-                    const pms = item.schedules[w.code];
-                    if (pms) {
-                        rowHtml += `<td><span class="pm-badge">${pms}</span></td>`;
+                    let hasPMS = false;
+                    if (item.projectedDate) {
+                        if (item.projectedDate >= w.startDate && item.projectedDate <= w.endDate) {
+                            hasPMS = true;
+                        }
+                    }
+
+                    if (hasPMS) {
+                        rowHtml += `<td><span class="pm-badge">${item.pmsType !== 'nan' ? item.pmsType : 'PM Service'}</span></td>`;
                     } else {
-                        rowHtml += `<td class="empty-cell">-</td>`;
+                        rowHtml += `<td style="color: #cbd5e1;">-</td>`;
                     }
                 });
 
@@ -469,20 +312,20 @@
             });
         }
 
-        // Update pagination UI
+        // Pagination Info
         const displayStart = totalItems === 0 ? 0 : startIndex + 1;
         document.getElementById('paginationInfo').innerText = `Showing ${displayStart} to ${endIndex} of ${totalItems} entries`;
         document.getElementById('prevBtn').disabled = currentPage === 1;
         document.getElementById('nextBtn').disabled = currentPage >= totalPages || totalPages === 0;
     }
 
-    // Interactivity Handlers
     function switchFleet(fleet) {
         currentFleet = fleet;
         currentPage = 1;
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        event.target.classList.add('active');
+        document.getElementById('tabSMR').classList.toggle('active', fleet === 'SMR');
+        document.getElementById('tabKM').classList.toggle('active', fleet === 'KM');
         document.getElementById('calendarTitle').innerText = `PMS Weekly Schedule Matrix - ${fleet} Fleet`;
+        populateCategoryDropdown();
         renderTable();
     }
 
@@ -508,10 +351,20 @@
         renderTable();
     }
 
-    // Initial Execution
-    generateData();
-    renderTable();
-</script>
+    function exportData() {
+        alert("Exporting current weekly view matrix...");
+    }
 
+    // Initialize App
+    async function init() {
+        parsedSMRData = await fetchSheetData(SMR_SHEET_URL, 'SMR');
+        parsedKMData  = await fetchSheetData(KM_SHEET_URL, 'KM');
+
+        populateCategoryDropdown();
+        renderTable();
+    }
+
+    init();
+</script>
 </body>
 </html>
