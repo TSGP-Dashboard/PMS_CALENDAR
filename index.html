@@ -290,18 +290,16 @@
 
                     const parsedDate = parseProjectedDate(projectedDateStr);
                     
-                    // Show data regardless of date parsing (for debugging)
-                    if (parsedDate) {
-                        dataset.push({
-                            unitNo: unitNo,
-                            brand: (brand && brand !== '0' && brand !== 'nan') ? brand : '',
-                            model: (model && model !== '0' && model !== 'nan') ? model : '',
-                            category: itemCat,
-                            projectedDate: parsedDate,
-                            pmsType: pmsType,
-                            fleet: fleetType
-                        });
-                    }
+                    // Show data regardless of date parsing (matches SMR behavior)
+                    dataset.push({
+                        unitNo: unitNo,
+                        brand: (brand && brand !== '0' && brand !== 'nan') ? brand : '',
+                        model: (model && model !== '0' && model !== 'nan') ? model : '',
+                        category: itemCat,
+                        projectedDate: parsedDate,
+                        pmsType: pmsType,
+                        fleet: fleetType
+                    });
                 }
             });
             return dataset;
