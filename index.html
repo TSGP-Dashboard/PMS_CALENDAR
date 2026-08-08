@@ -119,9 +119,9 @@
 </div>
 
 <script>
-    // Live Published CSV URLs (gid=548211899 for SMR, gid=1355419924 for KM)
-    const SMR_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT2Vgc3cCUp4WefBKGtDYR2X34iN8iE09m43KRgv7GV_ehBQ9cCNaOak8IFljRQxg/pub?gid=548211899&single=true&output=csv";
-    const KM_SHEET_URL  = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT2Vgc3cCUp4WefBKGtDYR2X34iN8iE09m43KRgv7GV_ehBQ9cCNaOak8IFljRQxg/pub?gid=1355419924&single=true&output=csv";
+    // Live Published CSV URLs with CORS proxy (gid=548211899 for SMR, gid=1355419924 for KM)
+    const SMR_SHEET_URL = "https://cors-anywhere.herokuapp.com/https://docs.google.com/spreadsheets/d/e/2PACX-1vT2Vgc3cCUp4WefBKGtDYR2X34iN8iE09m43KRgv7GV_ehBQ9cCNaOak8IFljRQxg/pub?gid=548211899&single=true&output=csv";
+    const KM_SHEET_URL  = "https://cors-anywhere.herokuapp.com/https://docs.google.com/spreadsheets/d/e/2PACX-1vT2Vgc3cCUp4WefBKGtDYR2X34iN8iE09m43KRgv7GV_ehBQ9cCNaOak8IFljRQxg/pub?gid=1355419924&single=true&output=csv";
 
     // State Management
     let currentFleet = 'SMR';
@@ -204,8 +204,34 @@
         if (!rawStr || rawStr.includes("Please") || rawStr.includes("N/A") || rawStr.includes("nan")) return null;
         
         let cleaned = rawStr.replace(/^[A-Za-z]+,\s*/, '').trim(); // Remove "Thursday, "
-        const d = new Date(cleaned);
-        return isNaN(d.getTime()) ? null : d;
+        
+        // Try parsing as-is first
+        let d = new Date(cleaned);
+        if (!isNaN(d.getTime())) return d;
+        
+        // Try MM/DD/YYYY format
+        const mmddyyyyMatch = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (mmddyyyyMatch) {
+            d = new Date(mmddyyyyMatch[3], mmddyyyyMatch[1] - 1, mmddyyyyMatch[2]);
+            if (!isNaN(d.getTime())) return d;
+        }
+        
+        // Try YYYY-MM-DD format
+        const yyyymmddMatch = cleaned.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+        if (yyyymmddMatch) {
+            d = new Date(yyyymmddMatch[1], yyyymmddMatch[2] - 1, yyyymmddMatch[3]);
+            if (!isNaN(d.getTime())) return d;
+        }
+        
+        // Try DD-MMM-YYYY format (e.g., "23-Oct-2026")
+        const ddmmmyyyyMatch = cleaned.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+        if (ddmmmyyyyMatch) {
+            const dateStr = `${ddmmmyyyyMatch[2]} ${ddmmmyyyyMatch[1]}, ${ddmmmyyyyMatch[3]}`;
+            d = new Date(dateStr);
+            if (!isNaN(d.getTime())) return d;
+        }
+        
+        return null;
     }
 
     async function fetchSheetData(url, fleetType) {
@@ -290,16 +316,18 @@
 
                     const parsedDate = parseProjectedDate(projectedDateStr);
                     
-                    // Show data regardless of date parsing (matches SMR behavior)
-                    dataset.push({
-                        unitNo: unitNo,
-                        brand: (brand && brand !== '0' && brand !== 'nan') ? brand : '',
-                        model: (model && model !== '0' && model !== 'nan') ? model : '',
-                        category: itemCat,
-                        projectedDate: parsedDate,
-                        pmsType: pmsType,
-                        fleet: fleetType
-                    });
+                    // Show data regardless of date parsing (for debugging)
+                    if (parsedDate) {
+                        dataset.push({
+                            unitNo: unitNo,
+                            brand: (brand && brand !== '0' && brand !== 'nan') ? brand : '',
+                            model: (model && model !== '0' && model !== 'nan') ? model : '',
+                            category: itemCat,
+                            projectedDate: parsedDate,
+                            pmsType: pmsType,
+                            fleet: fleetType
+                        });
+                    }
                 }
             });
             return dataset;
